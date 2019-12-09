@@ -6,7 +6,7 @@ namespace udp_server {
 
 	class listener_handler {
 	public: 
-		static const std::string help_flag, start_flag, open_port_flag, close_port_flag, cancel_flag;
+		static const std::string help_flag, open_port_flag, close_port_flag, cancel_flag;
 		static const std::string display_status_flag;
 		static const unsigned short min_port = 1024, max_port = 65535;
 
@@ -34,12 +34,11 @@ namespace udp_server {
 		void action(std::string input);
 		void display_listener_status();
 		void run_listener(udp_listener* listener, std::vector<unsigned short> ports, bool* runner_flag);
-		void open_port();
-		void handle_open_port(unsigned short port);
+		void read_port(std::string flag);
 		void display_help();
-		void close_port();
-		void handle_close_port(std::vector<unsigned short>::iterator);
 		void display_data(std::string data);
 		void display_log(std::stringstream& stream);
+		bool handle_open_port(unsigned short port);
+		bool handle_close_port(unsigned short port);
 	};
 }
