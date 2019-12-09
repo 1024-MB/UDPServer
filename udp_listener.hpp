@@ -15,6 +15,8 @@ namespace udp_server {
         void stop_listening_on(unsigned short port);
         void run();
         void restart();
+        void unsubscribe_logger();
+        void unsubscribe_data_reader();
 
     public:
         template<typename T>
@@ -33,11 +35,7 @@ namespace udp_server {
 
     public:
         udp_listener();
-        ~udp_listener() {
-            delete context_;
-            for (int i = 0; i < sockets_.size(); i++) 
-                delete sockets_.at(i);            
-        }
+        ~udp_listener();
 
     private:
         boost::asio::io_context* context_;

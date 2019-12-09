@@ -90,4 +90,18 @@ namespace udp_server {
             if (size == 1) context_->reset();
         }
     }
+
+    void udp_listener::unsubscribe_logger() {
+        logger_ = nullptr;
+    }
+
+    void udp_listener::unsubscribe_data_reader() {
+        data_reader_ = nullptr;
+    }
+
+    udp_listener::~udp_listener() {
+        delete context_;
+        for (size_t i = 0; i < sockets_.size(); i++)
+            delete sockets_.at(i);
+    }
 }
