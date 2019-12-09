@@ -17,7 +17,7 @@ namespace udp_server {
 
 	public:
 		udp_socket(boost::asio::io_context* context, unsigned short port, udp_listener* listener) 
-			: socket_(*context, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port)), port(port), listener_(listener) {}
+			: port(port), socket_(*context, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port)), listener_(listener) {}
 
 	private:
 		boost::asio::ip::udp::socket socket_;
