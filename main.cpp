@@ -16,7 +16,7 @@ pair<vector<string>, vector<unsigned short>> parse_arguments(int argc, char* arg
             auto port = boost::lexical_cast<long>(arg);
             if (!listener_handler::validate_port(port))
                 throw runtime_error(listener_handler::invalid_port_message());
-            else port_arguments.push_back(port);
+            else port_arguments.push_back(static_cast<unsigned short>(port));
         }
         catch (boost::bad_lexical_cast&) {
             if (listener_handler::validate_flag(arg))
