@@ -40,8 +40,8 @@ namespace udp_server {
         }
     }
 
-	void listener_handler::start_listener() {			
-		thread = boost::thread { &listener_handler::run_listener, this, listener, ports, runner_flag };
+    void listener_handler::start_listener() {
+        thread = boost::thread{ &listener_handler::run_listener, this, listener, ports, runner_flag };
 
         auto begin = system_clock::now();
         int64_t duration;
@@ -52,8 +52,8 @@ namespace udp_server {
 
         if (*runner_flag == true || ports.empty())
             display_listener_status();
-        else throw runtime_error("Unexpected listener behaviour, shutting down.");        
-	}
+        else throw runtime_error("Unexpected listener behaviour, shutting down.");
+    }
 
     void listener_handler::run_listener(udp_listener* listener, vector<unsigned short> ports, bool* runner_flag) {
         try {
@@ -76,13 +76,13 @@ namespace udp_server {
                 cout << ports.at(i) << flush;
                 if (num - i > 1)
                     cout << ", " << flush;
-            }            
+            }
         }
         else cout << "No UDP ports are beeing listened" << flush;
-        cout << endl <<endl;
+        cout << endl << endl;
     }
 
-    void listener_handler::open_port() {        
+    void listener_handler::open_port() {
         while (true) {
             cout << "Port number: " << flush;
             string input; cin >> input;
@@ -93,8 +93,8 @@ namespace udp_server {
                 auto it = find_if(ports.begin(), ports.end(), [&](unsigned short port) { return port == num; });
                 if (it != ports.end())
                     cout << "Port already listed" << endl;
-                else if (!validate_port(num)) 
-                    cerr << invalid_port_message() << endl;                
+                else if (!validate_port(num))
+                    cerr << invalid_port_message() << endl;
                 else {
                     handle_open_port(num);
                     cout << "Port " + to_string(num) + " listed" << endl;
@@ -116,7 +116,7 @@ namespace udp_server {
             listener->listen_on(port);
             listener->restart();
         }
-    } 
+    }
 
     void listener_handler::close_port() {
         while (true) {
@@ -169,7 +169,7 @@ namespace udp_server {
     void listener_handler::display_help() {
         cout << endl << start_flag + " Start listener"
             << endl << open_port_flag + " Open port"
-            << endl << close_port_flag + " Close port"            
+            << endl << close_port_flag + " Close port"
             << endl << cancel_flag + " Cancel input"
             << endl << help_flag + " Help"
             << endl << endl;
