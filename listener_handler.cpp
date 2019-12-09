@@ -14,23 +14,23 @@ namespace udp_server {
         listener_handler::open_port_flag = "-po",
         listener_handler::close_port_flag = "-pc",
         listener_handler::cancel_flag = "-c",
-        listener_handler::display_status_flag ="-ds";
+        listener_handler::display_status_flag = "-ds";
 
-	listener_handler::listener_handler(vector<string> flags, vector<unsigned short> ports) {
+    listener_handler::listener_handler(vector<string> flags, vector<unsigned short> ports) {
         this->flags = flags;
         this->ports = ports;
 
         runner_flag = new bool(false);
-		listener = new udp_listener();
+        listener = new udp_listener();
         listener->subscribe_logger(&listener_handler::display_log, *this);
         listener->subscribe_data_reader(&listener_handler::display_data, *this);
 
         cout << "Welcome to UDP Server v1.0" << endl;
         cout << "Use -h to list available options" << endl << endl;
-	}
+    }
 
     void listener_handler::run() {
-        if (any_of(flags.begin(), flags.end(), [](string flag) { return flag == "-s"; }))
+        if (any_of(flags.begin(), flags.end(), [](string flag) { return flag == start_flag; }))
             start_listener();
 
         string input;
@@ -90,7 +90,7 @@ namespace udp_server {
                 break;
             try {
                 auto num = boost::lexical_cast<long>(input);
-                auto it = find_if(ports.begin(), ports.end(), [&](unsigned short port) {return port == num; });
+                auto it = find_if(ports.begin(), ports.end(), [&](unsigned short port) { return port == num; });
                 if (it != ports.end())
                     cout << "Port already listed" << endl;
                 else if (!validate_port(num)) 
