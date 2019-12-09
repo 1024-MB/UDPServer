@@ -88,10 +88,13 @@ namespace udp_server {
 
     void udp_listener::stop_listening_on(unsigned short port) {
         auto it = find_if(sockets_.begin(), sockets_.end(), [&](udp_socket* socket) { return socket->port == port; });
-        if (it != sockets_.end()) {           
+        if (it != sockets_.end()) { 
+            auto size = sockets_.size();
+            if (size == 1) context_->stop();            
             (*it)->close();
             delete* it;
             sockets_.erase(it);
+            if (size == 1) context_->reset();
         }
     }
 }
