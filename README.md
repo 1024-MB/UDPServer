@@ -1,5 +1,5 @@
 # UDPServer
-Simple UDP server example using boost library, written for linux.
+UDP server example using boost library, written for linux.
 
 Build using Boost 1.71.0
 
