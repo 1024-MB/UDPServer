@@ -51,28 +51,21 @@ namespace udp_server {
     }
 
     void udp_listener::log_receive_event(udp_socket* udp_socket, size_t bytes_transferred, const boost::system::error_code& error) {
-        if (logger_) {
+        if (logger_ && !error) {
             stringstream stream;
-            if (!error) {
-                auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-                stream << "\n" << std::ctime(&time) << "Received " << bytes_transferred << ((bytes_transferred != 1) ? " bytes" : " byte")
-                    << " from " << udp_socket->endpoint().address() << ":" << udp_socket->endpoint().port() << " on UDP: " << udp_socket->port << endl;
-            }
-            else stream << error.message() << endl;
+            auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            stream << "\n" << std::ctime(&time) << "Received " << bytes_transferred << ((bytes_transferred != 1) ? " bytes" : " byte")
+                << " from " << udp_socket->endpoint().address() << ":" << udp_socket->endpoint().port() << " on UDP: " << udp_socket->port << endl;            
 
             logger_(stream);
         }
     }
 
     void udp_listener::log_confirm_event(udp_socket* udp_socket, const boost::system::error_code& error) {
-        if (logger_) {
+        if (logger_ && !error) {
             stringstream stream;
-            if (!error) {
-                stream << "Confirmed transfer from " << udp_socket->endpoint().address() << ":" << udp_socket->endpoint().port()
-                    << " on UDP: " << udp_socket->port << endl;
-            }
-            else stream << "Failed to confirm for " << udp_socket->endpoint().address() << ":" << udp_socket->endpoint().port()
-                << " " << error.message() << " on UDP: " << udp_socket->port << endl;
+            stream << "Confirmed transfer to " << udp_socket->endpoint().address() << ":" << udp_socket->endpoint().port()
+                << " on UDP: " << udp_socket->port << endl;            
 
             logger_(stream);
         }
