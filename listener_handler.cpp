@@ -20,20 +20,24 @@ namespace udp_server {
 
 
     listener_handler::listener_handler(vector<string> flags, vector<unsigned short> ports) {
-        this->flags = flags;
-        this->ports = ports;
-
         runner_flag = new bool(false);
         listener = new udp_listener();
+
+        cout << "UDPListener v1.0" << endl;
+        cout << "Use -h to list available options" << endl << endl;
+
+        for (size_t i = 0; i < ports.size(); i++) {
+            auto port = ports.at(i);
+            if (!listener->listen_on(port))
+                cerr << "Error: port " << to_string(port) << " already in use" << endl;
+            else this->ports.push_back(port);            
+        }
 
         if (any_of(flags.begin(), flags.end(), [](string flag) { return flag == toggle_log_output_flag; }))
             toggle_log_output();
 
         if (any_of(flags.begin(), flags.end(), [](string flag) { return flag == toggle_data_output_flag; }))
             toggle_data_output();
-
-        cout << "UDPListener v1.0" << endl;
-        cout << "Use -h to list available options" << endl << endl;
     }
 
     void listener_handler::run() {
@@ -66,9 +70,6 @@ namespace udp_server {
 
     void listener_handler::run_listener(udp_listener* listener, vector<unsigned short> ports, bool* runner_flag) {
         try {
-            for (size_t i = 0; i < ports.size(); i++)
-                listener->listen_on(ports.at(i));
-
             *runner_flag = true;
             listener->run();
         }
@@ -119,16 +120,18 @@ namespace udp_server {
         if (it != ports.end())
             cout << "Port already listed" << endl;
         else {
-            ports.push_back(static_cast<unsigned short>(num));
-            cout << "Port " + to_string(num) + " listed" << endl;
-
-            if (*runner_flag == true) {
-                listener->listen_on(static_cast<unsigned short>(num));
-                listener->restart();
-                display_listener_status();
+            auto port = static_cast<unsigned short>(num);
+            if (listener->listen_on(port)) {
+                ports.push_back(port);
+                cout << "Port " + to_string(port) + " listed" << endl;
+                if (*runner_flag == true) {
+                    listener->restart();
+                    display_listener_status();
+                }
+                else start_listener();
+                return true;
             }
-            else start_listener();
-            return true;
+            else cerr << "Port already in use by another process." << endl;
         }
         return false;
     }
