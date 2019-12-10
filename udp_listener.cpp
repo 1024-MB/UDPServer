@@ -16,15 +16,19 @@ namespace udp_server {
         confirm_event_signal.connect(boost::bind(&udp_listener::handle_confirm_event, this, _1, _2));
     }
 
-    void udp_listener::listen_on(unsigned short port) {
+    bool udp_listener::listen_on(unsigned short port) {
         try
         {
             sockets_.push_back(new udp_socket(context_, port, this));
             sockets_.back()->listen();
+            return true;
         }
-        catch (std::exception& ex)
+        catch (std::runtime_error & ex)
         {
-            cerr << ex.what() << endl;
+            string error(ex.what());
+            if (error == "bind: Address already in use")
+                return false;
+            else throw ex;
         }
     }
 

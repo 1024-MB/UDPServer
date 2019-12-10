@@ -11,7 +11,7 @@ namespace udp_server {
         boost::signals2::signal<void(udp_socket*, const boost::system::error_code& error)> confirm_event_signal;
 
     public:
-        void listen_on(unsigned short port);
+        bool listen_on(unsigned short port);
         void stop_listening_on(unsigned short port);
         void run();
         void restart();
