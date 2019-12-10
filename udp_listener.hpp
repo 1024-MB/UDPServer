@@ -49,5 +49,7 @@ namespace udp_server {
         void log_receive_event(udp_socket* udp_socket, size_t bytes_transferred, const boost::system::error_code& error);
         void log_confirm_event(udp_socket* udp_socket, const boost::system::error_code& error);
         void send_confirmation_message(udp_socket* udp_socket, size_t bytes_transferred);
+        void close_socket(__gnu_cxx::__normal_iterator<udp_socket**, std::vector<udp_socket*>>& iterator);
+        void close_socket_and_reset(__gnu_cxx::__normal_iterator<udp_socket**, std::vector<udp_socket*>>& iterator);
     };
 }

@@ -80,13 +80,22 @@ namespace udp_server {
     void udp_listener::stop_listening_on(unsigned short port) {
         auto it = find_if(sockets_.begin(), sockets_.end(), [&](udp_socket* socket) { return socket->port == port; });
         if (it != sockets_.end()) { 
-            auto size = sockets_.size();
-            if (size == 1) context_->stop();            
-            (*it)->close();
-            delete* it;
-            sockets_.erase(it);
-            if (size == 1) context_->reset();
+            if (sockets_.size() == 1)
+                close_socket_and_reset(it);
+            else close_socket(it);
         }
+    }
+
+    void udp_listener::close_socket_and_reset(__gnu_cxx::__normal_iterator<udp_socket**, vector<udp_socket*>>& iterator) {
+        context_->stop();
+        close_socket(iterator);
+        context_->reset();
+    }
+
+    void udp_listener::close_socket(__gnu_cxx::__normal_iterator<udp_socket**, vector<udp_socket*>>& iterator) {
+        (*iterator)->close();
+        delete* iterator;
+        sockets_.erase(iterator);
     }
 
     void udp_listener::unsubscribe_logger() {
