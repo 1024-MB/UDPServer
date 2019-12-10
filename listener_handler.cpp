@@ -1,5 +1,6 @@
 #include <iostream>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include "listener_handler.hpp"
 #include "udp_listener.hpp"
 
@@ -10,12 +11,12 @@ namespace udp_server {
 
     const string
         listener_handler::help_flag = "-h",
-        listener_handler::open_port_flag = "-o",
-        listener_handler::close_port_flag = "-c",
+        listener_handler::open_port_flag = "-a",
+        listener_handler::close_port_flag = "-r",
         listener_handler::cancel_flag = "--",
         listener_handler::display_status_flag = "-ds",
-        listener_handler::toggle_log_output_flag = "-dl",
-        listener_handler::toggle_data_output_flag = "-dd";
+        listener_handler::toggle_log_output_flag = "-tl",
+        listener_handler::toggle_data_output_flag = "-td";
 
 
     listener_handler::listener_handler(vector<string> flags, vector<unsigned short> ports) {
@@ -31,7 +32,7 @@ namespace udp_server {
         if (any_of(flags.begin(), flags.end(), [](string flag) { return flag == toggle_data_output_flag; }))
             toggle_data_output();
 
-        cout << "Welcome to UDP Server v1.0" << endl;
+        cout << "UDPListener v1.0" << endl;
         cout << "Use -h to list available options" << endl << endl;
     }
 
@@ -40,7 +41,7 @@ namespace udp_server {
 
         string input;
         while (true) {
-            cin >> input;
+            getline(cin, input);
             action(input);
         }
     }
@@ -60,7 +61,7 @@ namespace udp_server {
                 display_listener_status();
             else throw runtime_error("Unexpected listener behaviour, shutting down");
         }
-        else cout << "Enlist ports to start listener" << endl;
+        else cout << "Enlist ports to start listener" << endl << endl;;
     }
 
     void listener_handler::run_listener(udp_listener* listener, vector<unsigned short> ports, bool* runner_flag) {
@@ -110,18 +111,19 @@ namespace udp_server {
         }
     }
 
-    bool listener_handler::handle_open_port(unsigned short num) {
+    bool listener_handler::handle_open_port(long num) {
+        if (!validate_port(num))
+            cerr << invalid_port_message() << endl;
+
         auto it = find_if(ports.begin(), ports.end(), [&](unsigned short port) { return port == num; });
         if (it != ports.end())
             cout << "Port already listed" << endl;
-        else if (!validate_port(num))
-            cerr << invalid_port_message() << endl;
         else {
-            ports.push_back(num);
+            ports.push_back(static_cast<unsigned short>(num));
             cout << "Port " + to_string(num) + " listed" << endl;
 
             if (*runner_flag == true) {
-                listener->listen_on(num);
+                listener->listen_on(static_cast<unsigned short>(num));
                 listener->restart();
                 display_listener_status();
             }
@@ -131,15 +133,16 @@ namespace udp_server {
         return false;
     }
 
-    bool listener_handler::handle_close_port(unsigned short num) {
-        auto it = find_if(ports.begin(), ports.end(), [&](unsigned short port) {return port == num; });
+    bool listener_handler::handle_close_port(long num) {
         if (!validate_port(num))
-            cerr << "Invalid port" << endl;
-        else if (it == ports.end())
+            cerr << "Invalid port number" << endl;
+
+        auto it = find_if(ports.begin(), ports.end(), [&](unsigned short port) {return port == num; });        
+        if (it == ports.end())
             cout << "Port not listed" << endl;
         else {
             bool is_listened = *runner_flag;
-            listener->stop_listening_on(num);
+            listener->stop_listening_on(static_cast<unsigned short>(num));
             ports.erase(it);
             if (is_listened)
                 cout << "Port closed" << endl;
@@ -151,7 +154,9 @@ namespace udp_server {
     }
 
     void listener_handler::action(string input) {
-        if (input == help_flag)
+        if (single_line_action(input))
+            return;
+        else if (input == help_flag)
             display_help();
         else if (input == open_port_flag || input == close_port_flag)
             read_port(input);
@@ -161,6 +166,26 @@ namespace udp_server {
             toggle_log_output();
         else if (input == toggle_data_output_flag)
             toggle_data_output();
+        else if (!all_of(input.begin(), input.end(), [](char c) { return isspace(c); }))
+            cout << "Unrecognized command \"" + input + "\"" << endl;
+    }
+
+    bool listener_handler::single_line_action(string input) {
+        try {
+            if (boost::starts_with(input, open_port_flag + " ")) {
+                auto port = boost::lexical_cast<long>(input.substr(open_port_flag.length() + 1));
+                handle_open_port(port);
+                return true;
+            }
+            else if (boost::starts_with(input, close_port_flag + " ")) {
+                auto port = boost::lexical_cast<long>(input.substr(input.find(close_port_flag)));
+                handle_close_port(port);
+                return true;
+            }
+        }
+        catch (boost::bad_lexical_cast&) {
+        }
+        return false;
     }
 
     void listener_handler::display_help() {
@@ -171,7 +196,6 @@ namespace udp_server {
             << endl << toggle_log_output_flag + " Toggle log output"
             << endl << toggle_data_output_flag + " Toggle data output"
             << endl << cancel_flag + " Cancel input"
-            << endl << help_flag + " Help"
             << endl << endl;
     }
 
@@ -197,16 +221,26 @@ namespace udp_server {
 
     void listener_handler::toggle_log_output() {
         outputting_log ^= 1;
-        if (outputting_log)
+        if (outputting_log) {
             listener->subscribe_logger(&listener_handler::display_log, *this);
-        else listener->unsubscribe_logger();
+            cout << "Outputting log enabled" << endl << endl;;
+        }
+        else {
+            listener->unsubscribe_logger();
+            cout << "Outputting log disabled" << endl << endl;;
+        }
     }
 
     void listener_handler::toggle_data_output() {
         outputting_data ^= 1;
-        if (outputting_data)
+        if (outputting_data) {
             listener->subscribe_data_reader(&listener_handler::display_data, *this);
-        else listener->unsubscribe_data_reader();
+            cout << "Outputting data enabled" << endl << endl;;
+        }
+        else {
+            listener->unsubscribe_data_reader();
+            cout << "Outputting data disabled" << endl << endl;;
+        }
     }
 
     listener_handler::~listener_handler() {

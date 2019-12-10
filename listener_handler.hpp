@@ -40,7 +40,8 @@ namespace udp_server {
 		void display_log(std::stringstream& stream);
 		void toggle_log_output();
 		void toggle_data_output();
-		bool handle_open_port(unsigned short port);
-		bool handle_close_port(unsigned short port);
+		bool single_line_action(std::string input);
+		bool handle_open_port(long num);
+		bool handle_close_port(long num);
 	};
 }

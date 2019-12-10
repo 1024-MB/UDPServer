@@ -1,5 +1,4 @@
 #include <iostream>
-#include <memory>
 #include <boost/array.hpp>
 #include "udp_listener.hpp"
 #include "udp_socket.hpp"
@@ -30,7 +29,6 @@ namespace udp_server {
     }
 
     void udp_listener::handle_receive_event(udp_socket* udp_socket, size_t bytes_transferred, const boost::system::error_code& error) {
-
         log_receive_event(udp_socket, bytes_transferred, error);
 
         if (!error) {
