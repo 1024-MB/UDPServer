@@ -22,7 +22,6 @@ namespace udp_server {
 
 	private:
 		std::vector<unsigned short> ports;
-		std::vector<std::string> flags;
 		udp_listener* listener;
 		boost::thread thread;
 		bool* runner_flag;
