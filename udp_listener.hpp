@@ -1,7 +1,7 @@
 #include <boost/asio.hpp>
 #include <boost/signals2.hpp>
 
-namespace udp_server {
+namespace tcp_udp_listener {
 
     class udp_socket;
 
@@ -13,8 +13,6 @@ namespace udp_server {
     public:
         bool listen_on(unsigned short port);
         void stop_listening_on(unsigned short port);
-        void run();
-        void restart();
         void unsubscribe_logger();
         void unsubscribe_data_reader();
 
@@ -34,7 +32,7 @@ namespace udp_server {
         }
 
     public:
-        udp_listener();
+        udp_listener(boost::asio::io_context* context);
         ~udp_listener();
 
     private:

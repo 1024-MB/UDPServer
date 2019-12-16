@@ -8,10 +8,9 @@ using namespace boost;
 using namespace asio;
 using namespace ip;
 
-namespace udp_server {
+namespace tcp_udp_listener {
 
-    udp_listener::udp_listener() {
-        context_ = new boost::asio::io_context();
+    udp_listener::udp_listener(boost::asio::io_context* context) : context_(context) {
         receive_event_signal.connect(boost::bind(&udp_listener::handle_receive_event, this, _1, _2, _3));
         confirm_event_signal.connect(boost::bind(&udp_listener::handle_confirm_event, this, _1, _2));
     }
@@ -71,14 +70,6 @@ namespace udp_server {
 
             logger_(stream);
         }
-    }
-
-    void udp_listener::run() {
-        context_->run();
-    }
-
-    void udp_listener::restart() {
-        context_->restart();
     }
 
     void udp_listener::stop_listening_on(unsigned short port) {
