@@ -1,13 +1,26 @@
 #include <iostream>
 #include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string.hpp>
 #include "listener_handler.hpp"
+#include "tcp_listener.hpp"
 #include "udp_listener.hpp"
 
 using namespace std;
 using namespace std::chrono;
+using namespace boost;
+using namespace asio;
 
-namespace udp_server {
+namespace tcp_udp_listener {
+
+    const unsigned short
+        listener_handler::min_port = 1024,
+        listener_handler::max_port = 65535;
+
+    const string
+        listener_handler::tcp_protocol = "-tcp",
+        listener_handler::udp_protocol = "-udp";
 
     const string
         listener_handler::help_flag = "-h",
@@ -19,18 +32,31 @@ namespace udp_server {
         listener_handler::toggle_data_output_flag = "-td";
 
 
-    listener_handler::listener_handler(vector<string> flags, vector<unsigned short> ports) {
-        runner_flag = new bool(false);
-        listener = new udp_listener();
+    listener_handler::listener_handler(vector<string> flags, vector<pair<string, unsigned short>> ports) {
+        context_ = new io_context();
+        tcp_listener_ = new tcp_listener(context_);
+        udp_listener_ = new udp_listener(context_);
+        runner_flag_ = new bool(false);
 
-        cout << "UDPListener v1.0" << endl;
+        cout << "TCP/UDP Listener v2.0" << endl;
         cout << "Use -h to list available options" << endl << endl;
 
         for (size_t i = 0; i < ports.size(); i++) {
             auto port = ports.at(i);
-            if (!listener->listen_on(port))
-                cerr << "Error: port " << to_string(port) << " already in use" << endl;
-            else this->ports.push_back(port);            
+            auto protocol = port.first;
+            auto number = port.second;
+
+            if (protocol == tcp_protocol) {
+                if (!tcp_listener_->listen_on(number))
+                    cerr << "Error: TCP " << to_string(number) << " already in use" << endl;
+                else this->tcp_ports_.push_back(number);
+            }
+            else if (protocol == udp_protocol) {
+                if (!udp_listener_->listen_on(number))
+                    cerr << "Error: UPD " << to_string(number) << " already in use" << endl;
+                else this->udp_ports_.push_back(number);
+            } 
+            else throw runtime_error(invalid_protocol_message());        
         }
 
         if (any_of(flags.begin(), flags.end(), [](string flag) { return flag == toggle_log_output_flag; }))
@@ -51,81 +77,109 @@ namespace udp_server {
     }
 
     void listener_handler::start_listener() {
-        if (!ports.empty()) {
-            thread = boost::thread{ &listener_handler::run_listener, this, listener, ports, runner_flag };
+        if (!tcp_ports_.empty() || !udp_ports_.empty()) {
+            thread_ = boost::thread{ &listener_handler::run_listener, this };
 
             auto begin = system_clock::now();
             int64_t duration;
             do {
                 auto current = system_clock::now();
                 duration = duration_cast<std::chrono::milliseconds>(current - begin).count();
-            } while (*runner_flag == false && duration < 5000);
+            } while (*runner_flag_ == false && duration < 5000);
 
-            if (*runner_flag == true || ports.empty())
+            if (*runner_flag_ == true || (tcp_ports_.empty() && udp_ports_.empty()))
                 display_listener_status();
             else throw runtime_error("Unexpected listener behaviour, shutting down");
         }
         else cout << "Enlist ports to start listener" << endl << endl;;
     }
 
-    void listener_handler::run_listener(udp_listener* listener, vector<unsigned short> ports, bool* runner_flag) {
+    void listener_handler::run_listener() {
         try {
-            *runner_flag = true;
-            listener->run();
+            *runner_flag_ = true;
+            context_->run();
         }
         catch (runtime_error& ex) {
             cerr << ex.what() << endl;
         }
-        *runner_flag = false;
+        *runner_flag_ = false;
     }
 
     void listener_handler::display_listener_status() {
-        auto num = ports.size();
-        if (num > 0 && *runner_flag == true) {
-            cout << "Listening on UDP: " << flush;
-            for (size_t i = 0; i < num; i++) {
-                cout << ports.at(i) << flush;
-                if (num - i > 1)
-                    cout << ", " << flush;
+        auto protocol = "TCP";
+        auto source = &tcp_ports_;
+
+        for (int i = 0; i < 2; i++) {
+            auto num = source->size();
+            if (num > 0 && *runner_flag_ == true) {
+                cout << "Listening on " << protocol << ": " << flush;
+                for (size_t i = 0; i < num; i++) {
+                    cout << source->at(i) << flush;
+                    if (num - i > 1)
+                        cout << ", " << flush;
+                }
             }
+            else cout << "No " << protocol << " ports are beeing listened" << flush;
+
+            protocol = "UDP";
+            source = &udp_ports_;
+            cout << endl;
         }
-        else cout << "No UDP ports are beeing listened" << flush;
-        cout << endl << endl;
+        cout << endl;
     }    
 
     void listener_handler::read_port(string flag) {
+        string protocol, port;
         while (true) {
-            cout << "Port number: " << flush;
-            string input; cin >> input;
-            if (input == cancel_flag)
+            cout << "Protocol: " << flush;
+            cin >> protocol;
+            if (protocol == cancel_flag)
                 break;
+            else if (iequals(protocol, "tcp"))
+                protocol = tcp_protocol;
+            else if (iequals(protocol, "udp"))
+                protocol = udp_protocol;
+            else if (protocol != tcp_protocol || protocol != udp_protocol) {
+                cerr << "Invalid input" << endl;
+                continue;
+            }
+
+            cout << "Port number: " << flush;
+            cin >> port;
+            if (port == cancel_flag)
+                break;
+
             try {
-                auto num = boost::lexical_cast<long>(input);
+                auto num = lexical_cast<long>(port);
                 if ((flag == open_port_flag) 
-                    ? handle_open_port(static_cast<unsigned short>(num)) 
-                    : handle_close_port(static_cast<unsigned short>(num)))
+                    ? handle_open_port(static_cast<unsigned short>(num), protocol) 
+                    : handle_close_port(static_cast<unsigned short>(num), protocol))
                     break;                
             }
-            catch (boost::bad_lexical_cast&) {
+            catch (bad_lexical_cast&) {
                 cerr << "Invalid input" << endl;
             }
         }
     }
 
-    bool listener_handler::handle_open_port(long num) {
+    bool listener_handler::handle_open_port(long num, string protocol) {
         if (!validate_port(num))
             cerr << invalid_port_message() << endl;
 
-        auto it = find_if(ports.begin(), ports.end(), [&](unsigned short port) { return port == num; });
-        if (it != ports.end())
+        auto source = (protocol == tcp_protocol) 
+            ? &tcp_ports_ : (protocol == udp_protocol) 
+            ? &udp_ports_ : throw logic_error("Invalid protocol");
+
+        auto it = find_if(source->begin(), source->end(), [&](unsigned short port) { return port == num; });
+        if (it != source->end())
             cout << "Port already listed" << endl;
         else {
             auto port = static_cast<unsigned short>(num);
-            if (listener->listen_on(port)) {
-                ports.push_back(port);
-                cout << "Port " + to_string(port) + " listed" << endl;
-                if (*runner_flag == true) {
-                    listener->restart();
+            if ((protocol == tcp_protocol && tcp_listener_->listen_on(num)) || (protocol == udp_protocol && udp_listener_->listen_on(port))) {
+                source->push_back(port);
+                cout << "Port " + to_string(port) + " listed" << endl << endl;
+                if (*runner_flag_ == true) {
+                    context_->restart();
                     display_listener_status();
                 }
                 else start_listener();
@@ -136,21 +190,29 @@ namespace udp_server {
         return false;
     }
 
-    bool listener_handler::handle_close_port(long num) {
+    bool listener_handler::handle_close_port(long num, string protocol) {
         if (!validate_port(num))
             cerr << "Invalid port number" << endl;
 
-        auto it = find_if(ports.begin(), ports.end(), [&](unsigned short port) {return port == num; });        
-        if (it == ports.end())
+        auto source = (protocol == tcp_protocol)
+            ? &tcp_ports_ : (protocol == udp_protocol)
+            ? &udp_ports_ : throw logic_error("Invalid protocol");
+
+        auto it = find_if(source->begin(), source->end(), [&](unsigned short port) {return port == num; });
+        if (it == source->end())
             cout << "Port not listed" << endl;
         else {
-            bool is_listened = *runner_flag;
-            listener->stop_listening_on(static_cast<unsigned short>(num));
-            ports.erase(it);
-            if (is_listened)
-                cout << "Port closed" << endl;
-            else cout << "Port unlisted" << endl;
+            bool is_listened = *runner_flag_;
+            if(protocol == tcp_protocol)
+                tcp_listener_->stop_listening_on(static_cast<unsigned short>(num));
+            else if(protocol == udp_protocol)
+                udp_listener_->stop_listening_on(static_cast<unsigned short>(num));
+            else throw logic_error("Invalid protocol");
+
+            source->erase(it);   
+            cout << "Port closed" << endl << endl;
             display_listener_status();
+
             return true;
         }
         return false;
@@ -173,20 +235,34 @@ namespace udp_server {
             cout << "Unrecognized command \"" + input + "\"" << endl;
     }
 
-    bool listener_handler::single_line_action(string input) {
+    bool listener_handler::single_line_action(string input) {     
+        vector<string> tokens;
+        split(tokens, input, is_any_of(" "));
+        if (tokens.size() != 3)
+            return false;
+
         try {
-            if (boost::starts_with(input, open_port_flag + " ")) {
-                auto port = boost::lexical_cast<long>(input.substr(open_port_flag.length() + 1));
-                handle_open_port(port);
+            auto flag = tokens.at(0);
+            auto protocol = tokens.at(1);
+            auto port = lexical_cast<long>(tokens.at(2));
+
+            if (iequals(protocol, "tcp"))
+                protocol = tcp_protocol;
+            else if (iequals(protocol, "udp"))
+                protocol = udp_protocol;
+            else if (protocol != tcp_protocol || protocol != udp_protocol) 
+                return false;
+
+            if (flag == open_port_flag) {
+                handle_open_port(port, protocol);
                 return true;
             }
-            else if (boost::starts_with(input, close_port_flag + " ")) {
-                auto port = boost::lexical_cast<long>(input.substr(input.find(close_port_flag)));
-                handle_close_port(port);
+            else if (flag == close_port_flag) {
+                handle_close_port(port, protocol);
                 return true;
             }
         }
-        catch (boost::bad_lexical_cast&) {
+        catch (bad_lexical_cast&) {
         }
         return false;
     }
@@ -223,32 +299,42 @@ namespace udp_server {
     }
 
     void listener_handler::toggle_log_output() {
-        outputting_log ^= 1;
-        if (outputting_log) {
-            listener->subscribe_logger(&listener_handler::display_log, *this);
+        outputting_log_ ^= 1;
+        if (outputting_log_) {
+            udp_listener_->subscribe_logger(&listener_handler::display_log, *this);
             cout << "Outputting log enabled" << endl << endl;;
         }
         else {
-            listener->unsubscribe_logger();
+            udp_listener_->unsubscribe_logger();
             cout << "Outputting log disabled" << endl << endl;;
         }
     }
 
     void listener_handler::toggle_data_output() {
-        outputting_data ^= 1;
-        if (outputting_data) {
-            listener->subscribe_data_reader(&listener_handler::display_data, *this);
+        outputting_data_ ^= 1;
+        if (outputting_data_) {
+            udp_listener_->subscribe_data_reader(&listener_handler::display_data, *this);
             cout << "Outputting data enabled" << endl << endl;;
         }
         else {
-            listener->unsubscribe_data_reader();
+            udp_listener_->unsubscribe_data_reader();
             cout << "Outputting data disabled" << endl << endl;;
         }
     }
 
+    bool listener_handler::validate_protocol(string protocol) {
+        return protocol == tcp_protocol || protocol == udp_protocol;
+    }
+
+    string listener_handler::invalid_protocol_message() {
+        return "Protocol invalid or undefined";
+    }
+
     listener_handler::~listener_handler() {
-        delete listener;
-        delete runner_flag;
+        delete context_;
+        delete tcp_listener_;
+        delete udp_listener_;
+        delete runner_flag_;
     }
 }
 	

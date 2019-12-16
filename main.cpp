@@ -3,12 +3,13 @@
 #include "listener_handler.hpp"
 
 using namespace std;
-using namespace udp_server;
+using namespace tcp_udp_listener;
 
-pair<vector<string>, vector<unsigned short>> parse_arguments(int argc, char* argv[]) {
+pair<vector<string>, vector<pair<string, unsigned short>>> parse_arguments(int argc, char* argv[]) {
     vector<string> flag_arguments;
-    vector<unsigned short> port_arguments;
+    vector<pair<string, unsigned short>> port_arguments;
 
+    string protocol;
     for (int i = 0; i < argc - 1; i++) {
         string arg = argv[i + 1];
 
@@ -16,16 +17,23 @@ pair<vector<string>, vector<unsigned short>> parse_arguments(int argc, char* arg
             auto port = boost::lexical_cast<long>(arg);
             if (!listener_handler::validate_port(port))
                 throw runtime_error(listener_handler::invalid_port_message());
-            else port_arguments.push_back(static_cast<unsigned short>(port));
+            else {
+                if(protocol.empty())
+                    throw runtime_error(listener_handler::invalid_protocol_message());
+                port_arguments.push_back(pair<string, unsigned short>(protocol, static_cast<unsigned short>(port)));
+                protocol.clear();
+            }
         }
         catch (boost::bad_lexical_cast&) {
             if (listener_handler::validate_flag(arg))
                 flag_arguments.push_back(arg);
+            else if (listener_handler::validate_protocol(arg))
+                protocol = arg;
             else throw runtime_error("Invalid argument: " + arg);
         }   
     }
 
-    return pair<vector<string>, vector<unsigned short>>(flag_arguments, port_arguments);
+    return pair<vector<string>, vector<pair<string, unsigned short>>>(flag_arguments, port_arguments);
 }
 
 int main(int argc, char* argv[])
