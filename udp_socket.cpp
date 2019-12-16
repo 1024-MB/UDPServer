@@ -9,7 +9,7 @@ using namespace asio;
 using namespace std;
 using namespace ip;
 
-namespace udp_server {
+namespace tcp_udp_listener {
 
 	void udp_socket::listen() {
 		socket_.async_receive_from(buffer(rcv_buffer_), endpoint_,

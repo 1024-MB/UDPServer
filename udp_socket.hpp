@@ -1,6 +1,6 @@
 #include <boost/array.hpp>
 
-namespace udp_server {
+namespace tcp_udp_listener {
 
 	class udp_listener;
 
