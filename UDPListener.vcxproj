@@ -78,11 +78,17 @@
   <ItemGroup>
     <ClCompile Include="listener_handler.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="tcp_connection.cpp" />
+    <ClCompile Include="tcp_listener.cpp" />
+    <ClCompile Include="tcp_socket.cpp" />
     <ClCompile Include="udp_listener.cpp" />
     <ClCompile Include="udp_socket.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="listener_handler.hpp" />
+    <ClInclude Include="tcp_connection.hpp" />
+    <ClInclude Include="tcp_listener.hpp" />
+    <ClInclude Include="tcp_socket.hpp" />
     <ClInclude Include="udp_listener.hpp" />
     <ClInclude Include="udp_socket.hpp" />
   </ItemGroup>
